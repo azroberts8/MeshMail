@@ -1,63 +1,57 @@
-from meshtastic.serial_interface import SerialInterface
+import time
+
+from interfaces import MessageInterface
 from session import Session
-import pyotp
-import db
 
-
-def cmd_help(session: Session, interface: SerialInterface):
-    """Responds with available commands"""
+def cmd_help(interface: MessageInterface, session: Session):
     pass
 
 
-def send_reply(session: Session, interface: SerialInterface, message: str):
-    interface.sendText(message, destinationId=session.node_id)
-
-
-def cmd_register(session: Session, args: str, interface: SerialInterface):
-    """Creates a new user account with specified username - responds with TOTP secret key"""
+def cmd_register(interface: MessageInterface, session: Session, args):
     username = args.strip()
     if not username:
-        send_reply(session, interface, "Usage: /register <username>")
+        interface.send_message("Usage: /register <username>", session.node_id)
         return
 
-    existing = db.db.execute("SELECT 1 FROM users WHERE username = ?", (username,)).fetchone()
-    if existing:
-        send_reply(session, interface, f"Username '{username}' is already taken.")
+    try:
+        secret = session.register(username)
+    except ValueError as e:
+        interface.send_message(str(e), session.node_id)
         return
 
-    secret = pyotp.random_base32()
-    db.db.execute("INSERT INTO users (username, private_key) VALUES (?, ?)", (username, secret))
-    db.db.commit()
-
-    send_reply(session, interface, f"Registered! Add this key to your authenticator app: {secret}")
+    interface.send_message(f"Registered! Add this key to your authenticator app then use /login to login.", session.node_id)
+    time.sleep(2)
+    interface.send_message(f"{secret}", session.node_id)
 
 
-def cmd_login(session: Session, args: str, interface: SerialInterface):
-    """Authenticates a user by username and OTP code"""
+def cmd_login(interface: MessageInterface, session: Session, args):
     parts = args.strip().split(maxsplit=1)
     if len(parts) < 2:
-        send_reply(session, interface, "Usage: /login <username> <otp_code>")
+        interface.send_message("Usage: /login <username> <otp_code>", session.node_id)
         return
 
-    username, code = parts
+    username, otp_code = parts
+    try:
+        if session.login(username, otp_code):
+            interface.send_message(f"Logged in as {username.lower()}!", session.node_id)
+        else:
+            interface.send_message("Incorrect credentials.", session.node_id)
+    except ValueError as e:
+        interface.send_message(str(e), session.node_id)
 
-    row = db.db.execute("SELECT user_id, private_key FROM users WHERE username = ?", (username,)).fetchone()
-    if not row:
-        send_reply(session, interface, "Incorrect credentials.")
+
+def cmd_logout(interface: MessageInterface, session: Session):
+    if not session.authenticated:
+        interface.send_message("You are not logged in.", session.node_id)
         return
 
-    user_id, private_key = row
-    totp = pyotp.TOTP(private_key)
-    if not totp.verify(code):
-        send_reply(session, interface, "Incorrect credentials.")
+    session.logout()
+    interface.send_message("Logged out!", session.node_id)
+
+
+def cmd_whoami(interface: MessageInterface, session: Session):
+    if not session.authenticated:
+        interface.send_message("You are not logged in.", session.node_id)
         return
 
-    session.authenticated = True
-    session.username = username
-    session.user_id = user_id
-    send_reply(session, interface, f"Logged in as {username}.")
-
-
-def cmd_logout(session: Session, interface: SerialInterface):
-    """Destroys current session"""
-    pass
+    interface.send_message(f"Logged in as {session.username}.", session.node_id)

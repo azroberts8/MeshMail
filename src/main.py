@@ -3,14 +3,16 @@ from threading import Event
 from typing import Callable
 from interfaces import Meshtastic, MessageInterface
 from session import Session, SessionManager
-from commands import cmd_help, cmd_register, cmd_login, cmd_logout
+from commands import cmd_help, cmd_register, cmd_login, cmd_logout, cmd_whoami
 import db
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s: %(message)s")
 session_manager = SessionManager()
 
 def handle_message(message, sender, interface: MessageInterface):
+    session = session_manager.get_or_create(sender)
     message = message.strip()
+
     if not message.startswith("/"):
         interface.send_message("Unknown command. Send /help for usage.", sender)
         return
@@ -20,14 +22,16 @@ def handle_message(message, sender, interface: MessageInterface):
     args = parts[1] if len(parts) > 1 else ""
 
     match command:
-        # case "/help":
-        #     cmd_help(session, interface)
-        # case "/register":
-        #     cmd_register(session, args, interface)
-        # case "/login":
-        #     cmd_login(session, args, interface)
-        # case "/logout":
-        #     cmd_logout(session, interface)
+        case "/help":
+            cmd_help(interface, session)
+        case "/register":
+            cmd_register(interface, session, args)
+        case "/login":
+            cmd_login(interface, session, args)
+        case "/logout":
+            cmd_logout(interface, session)
+        case "/whoami":
+            cmd_whoami(interface, session)
         case _:
             interface.send_message(f"Unknown command: {command}. Send /help for usage.", sender)
 
