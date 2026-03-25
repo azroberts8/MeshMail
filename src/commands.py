@@ -6,7 +6,13 @@ import db
 
 
 def cmd_help(interface: MessageInterface, session: Session):
-    pass
+    messages = [
+        f"/help - Show this message\n/register <username> - Create an account\n/login <username> <otp_code> - Log in\n/logout - Log out\n/whoami - Show current user",
+        f"/sendmail <recipient> <message> - Send mail\n/inbox - View received mail\n/sent - View sent mail"
+    ]
+    for msg in messages:
+        interface.send_message(msg, session.node_id)
+        time.sleep(2)
 
 
 def cmd_register(interface: MessageInterface, session: Session, args):
