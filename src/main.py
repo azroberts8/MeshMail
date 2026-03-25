@@ -1,13 +1,13 @@
 import logging
 from threading import Event
-from typing import Callable
 from interfaces import Meshtastic, MessageInterface
-from session import Session, SessionManager
-from commands import cmd_help, cmd_register, cmd_login, cmd_logout, cmd_whoami
+from session import SessionManager
+from commands import cmd_help, cmd_register, cmd_login, cmd_logout, cmd_whoami, cmd_sendmail, cmd_inbox, cmd_sent
 import db
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s: %(message)s")
 session_manager = SessionManager()
+
 
 def handle_message(message, sender, interface: MessageInterface):
     session = session_manager.get_or_create(sender)
@@ -32,6 +32,12 @@ def handle_message(message, sender, interface: MessageInterface):
             cmd_logout(interface, session)
         case "/whoami":
             cmd_whoami(interface, session)
+        case "/sendmail":
+            cmd_sendmail(interface, session, args)
+        case "/inbox":
+            cmd_inbox(interface, session)
+        case "/sent":
+            cmd_sent(interface, session)
         case _:
             interface.send_message(f"Unknown command: {command}. Send /help for usage.", sender)
 
