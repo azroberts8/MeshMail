@@ -1,6 +1,6 @@
 import time
 from datetime import datetime, timezone
-from interfaces import MessageInterface
+from text_message_interfaces import MessageInterface
 from session import Session
 import db
 

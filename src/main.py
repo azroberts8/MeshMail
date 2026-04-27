@@ -1,6 +1,6 @@
 import logging
 from threading import Event
-from interfaces import Meshtastic, MessageInterface
+from text_message_interfaces import Meshtastic, MessageInterface
 from session import SessionManager
 from commands import cmd_help, cmd_register, cmd_login, cmd_logout, cmd_whoami, cmd_sendmail, cmd_inbox, cmd_sent
 import db
